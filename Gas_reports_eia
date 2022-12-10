@@ -1,0 +1,134 @@
+
+
+from urllib.request import urlopen
+from bs4 import BeautifulSoup as bs
+from urllib.error import HTTPError
+from urllib.error import URLError
+import requests
+import lxml
+import pandas as pd
+from time import sleep
+import ast
+import math
+import PIL
+import telebot
+import json
+
+headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'}
+url = f'https://ir.eia.gov/ngs/ngs.html'                            # NATURAL GAS STORAGE REPORT WEEKLY
+response = requests.get(url)
+html =response.content
+
+                                                #SCRAPING REPORTS
+
+class Scraper():
+    
+    def __init__(self, url):
+        self.url=url
+        self.r = requests.get(self.url, headers=headers)
+        self.soup = bs(self.r.text, 'lxml')
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'}
+        self.respomse=requests.get(url)
+    
+    def Natural_gas_storage (self):
+        whole_data = self.soup.find ('div', {'class':'main_col'})
+        future_report_date=self.soup.find ('div', {'class':'report_header'})
+        precise_future_report_date =future_report_date.select_one('span').text.strip()
+        clear_date=list(precise_future_report_date)
+        del(clear_date[0:166])
+        result_clear_date="".join(clear_date)
+        print(f"\n         СЛЕДУЮЩИЙ выпуск Natural gas storage будет: {result_clear_date}. В 17:20 по киеву, реакция была в 18:00")
+        report_data = whole_data.find_all ('strong')[20].text
+        current_report_data=int(report_data.replace(',',''))
+        current_storage_gas_data.append(current_report_data)
+        
+        prior_week_report_data=whole_data.find_all ('strong')[21].text
+        clear_prior_week_report_data=int(prior_week_report_data.replace(',',''))
+        last_week_storage_das_data.append(clear_prior_week_report_data)
+        print(f"ЗАКАЧАНО в хранилище обьем газа {current_report_data}.")
+        print(f"РАННЕЕ загружено на прошлой неделе {clear_prior_week_report_data}")
+        print(f"РАЗНИЦА {(current_report_data*100)/clear_prior_week_report_data-100}%")
+    
+    def COAL_report (self):
+        whole_data = self.soup.find ('div', {'class':'main_col'})
+        report_data= whole_data.find('i', {'class':'source'})
+        total= whole_data.find('tbody', {'id':'table_body'})
+        print(total)
+    
+    def Natural_gas_weekly_report(self):
+                                                     #GAS DEMAND
+        demand_data=self.soup.find('div', {'id':'tabs-supply-2'}) 
+        cal_date=demand_data.find ('tr').text
+        result =demand_data.findAll('td')
+        demand_this_week=float(result[-4].text)
+        demand_gas_this_week.append(demand_this_week)
+                                        
+                                                     #GAS SUPPLY
+        supply_data=self.soup.find('div', {'id':'tabs-supply-1'}) 
+        s_result =supply_data.findAll('td')
+        supply_this_week=float(s_result[-4].text)
+        supply_gas_this_week.append(supply_this_week)
+        print(f"ПОТРЕБНОСТЬ в газе {demand_this_week}")
+        print (f"ПОСТАВКИ газа на неделе {supply_this_week}.")
+        print(f"РАЗНИЦА потребность/поставки {(demand_this_week*100)/supply_this_week-100}%")
+    
+    def Natural_gas_weekly_report_date(self):
+        whole_data=self.soup.find('div', {'class':'report_header'}) 
+        future_cal_date =whole_data.select_one('span').text.strip()
+        clear_date=list(future_cal_date)
+        del(clear_date[0:151])
+        del(clear_date[-26:])
+        result_cal_date="".join(clear_date)
+
+        print(f"\n          СЛЕДУЮЩИЙ выпуск Natural gas weekly будет: {result_cal_date}. В 20:00 по Киеву, 21:00 реакция. На след утро торговля по результам отчета")
+        
+    def PROPANE_report(self):
+        whole_data=self.soup.find('div', {'id':'itn-tabs-1'})
+        report_data =whole_data.find_all('th')[-3].text
+        production = whole_data.find_all('td')[-7].text
+        propane_production.append(float(production))
+        demand=whole_data.find_all('td')[-3].text
+        propane_demand.append(float(demand))
+        
+        print(f"ПОТРЕБНОСТЬ газа пропана на неделе {demand}")
+        print(f"ПОСТАВКИ газа на этой неделе {production}")
+        #print(f"РАЗНИЦА потребность/поставки {(propane_demand*100)/(propane_production-100)}%")
+        
+    def PROPANE_future_report(self):
+        whole_data=self.soup.find('div', {'class':'release-dates'})
+        future_realise_date= whole_data.find_all('span')[-1].text
+        print(f"\n          СЛЕДУЮЩИЙ выпуск Petroleum and other liquids (Propane) будет: {future_realise_date}. В 19:00 по Киеву")
+        
+    def ELECTRICITY_monthly_report(self):
+        whole_data=self.soup.find_all('div', {'class':'l-col'})
+        res=self.soup.find_all('script')[-5]
+      
+current_storage_gas_data=[]
+last_week_storage_das_data=[]
+
+demand_gas_this_week=[]
+supply_gas_this_week=[]
+
+propane_production=[]
+propane_demand=[]
+
+scraper=Scraper(f'https://ir.eia.gov/ngs/ngs.html')
+scraper.Natural_gas_storage()
+
+scraper =Scraper(f'https://www.eia.gov/coal/production/weekly/tables/weekly_production.php')
+scraper.COAL_report()
+
+scraper=Scraper(f'https://www.eia.gov/naturalgas/weekly')
+scraper.Natural_gas_weekly_report_date()
+
+scraper=Scraper(f"https://www.eia.gov/naturalgas/weekly/#tabs-supply-2")
+scraper.Natural_gas_weekly_report()
+
+scraper=Scraper(f"https://www.eia.gov/petroleum/heatingoilpropane/schedule.php")
+scraper.PROPANE_future_report()
+
+scraper=Scraper(f"https://www.eia.gov/petroleum/heatingoilpropane/#itn-tabs-1")
+scraper.PROPANE_report()
+
+scraper =Scraper(f"https://www.eia.gov/electricity/monthly/update/")
+scraper.ELECTRICITY_monthly_report()
